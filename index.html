@@ -591,14 +591,10 @@
           <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(event)">
         </div>
         <div class="settings-group">
-          <div class="settings-group-title">分类管理</div>
-          <div class="settings-item" style="flex-direction:column;align-items:stretch;gap:10px;">
-            <div style="display:flex;gap:6px;">
-              <button class="cat-type-tab active" id="cat-tab-expense" onclick="switchCatTab('expense')">支出分类</button>
-              <button class="cat-type-tab" id="cat-tab-income" onclick="switchCatTab('income')">收入分类</button>
-            </div>
-            <div id="cat-manage-list"></div>
-            <button onclick="openAddCat()" style="width:100%;padding:10px;border:1.5px dashed var(--gray-2);border-radius:var(--radius-sm);font-size:14px;color:var(--gray-3);background:none;">+ 添加分类</button>
+          <div class="settings-group-title">分类</div>
+          <div class="settings-item" onclick="openCatPage()" style="cursor:pointer;">
+            <div class="settings-item-left"><span class="settings-item-icon">🏷️</span>分类管理</div>
+            <span style="color:var(--gray-3);font-size:16px;">›</span>
           </div>
         </div>
         <div class="settings-group">
@@ -675,6 +671,24 @@
       设置
     </button>
   </nav>
+</div>
+
+<!-- 分类管理页 -->
+<div id="cat-page" style="display:none;position:fixed;inset:0;background:var(--gray-1);z-index:50;flex-direction:column;max-width:480px;margin:0 auto;">
+  <div class="header" style="display:flex;align-items:center;gap:12px;">
+    <button onclick="closeCatPage()" style="color:var(--white);font-size:20px;padding:4px;">‹</button>
+    <h1 style="font-size:18px;font-weight:600;">分类管理</h1>
+  </div>
+  <div style="padding:16px;flex:1;overflow-y:auto;">
+    <div style="display:flex;gap:6px;margin-bottom:16px;">
+      <button class="cat-type-tab active" id="cat-tab-expense" onclick="switchCatTab('expense')">支出分类</button>
+      <button class="cat-type-tab" id="cat-tab-income" onclick="switchCatTab('income')">收入分类</button>
+    </div>
+    <div class="stats-card" style="padding:0 16px;">
+      <div id="cat-manage-list"></div>
+    </div>
+    <button onclick="openAddCat()" style="width:100%;margin-top:12px;padding:14px;border:1.5px dashed var(--gray-2);border-radius:var(--radius);font-size:15px;color:var(--gray-3);background:var(--white);">+ 添加分类</button>
+  </div>
 </div>
 
 <!-- 悬浮添加按钮 -->
@@ -1184,6 +1198,14 @@ function renderStats() {
 // ===== 分类管理 =====
 let catTabType = 'expense';
 
+function openCatPage() {
+  document.getElementById('cat-page').style.display = 'flex';
+  renderCatManageList();
+}
+function closeCatPage() {
+  document.getElementById('cat-page').style.display = 'none';
+}
+
 function switchCatTab(type) {
   catTabType = type;
   document.getElementById('cat-tab-expense').classList.toggle('active', type === 'expense');
@@ -1357,7 +1379,6 @@ if ('serviceWorker' in navigator) {
 // ===== 初始化 =====
 applyThemeColor(loadThemeColor());
 document.getElementById('currency-select').value = currentCurrency;
-renderCatManageList();
 renderRecords();
 </script>
 </body>

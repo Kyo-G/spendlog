@@ -499,7 +499,7 @@
             <option value="all">全部</option>
           </select>
         </div>
-        <div class="overview-balance"><span>¥</span><span id="ov-balance">0.00</span></div>
+        <div class="overview-balance"><span id="ov-sym">¥</span><span id="ov-balance">0.00</span></div>
         <div class="overview-row">
           <div class="overview-item">
             <label>收入</label>
@@ -550,6 +550,22 @@
           <div class="settings-item">
             <div class="settings-item-left"><span class="settings-item-icon">🗑️</span>清空所有数据</div>
             <button class="settings-btn danger" onclick="confirmClearAll()">清空</button>
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-group-title">货币</div>
+          <div class="settings-item">
+            <div class="settings-item-left"><span class="settings-item-icon">💱</span>货币单位</div>
+            <select id="currency-select" onchange="setCurrency(this.value)" style="border:1.5px solid var(--gray-2);border-radius:6px;padding:6px 10px;font-size:14px;background:var(--white);outline:none;">
+              <option value="JPY">🇯🇵 日元 ¥</option>
+              <option value="CNY">🇨🇳 人民币 ¥</option>
+              <option value="USD">🇺🇸 美元 $</option>
+              <option value="EUR">🇪🇺 欧元 €</option>
+              <option value="HKD">🇭🇰 港币 HK$</option>
+              <option value="TWD">🇹🇼 新台币 NT$</option>
+              <option value="KRW">🇰🇷 韩元 ₩</option>
+              <option value="GBP">🇬🇧 英镑 £</option>
+            </select>
           </div>
         </div>
         <div class="settings-group">
@@ -662,6 +678,32 @@ const CATEGORIES = {
   ]
 };
 
+// ===== 货币配置 =====
+const CURRENCIES = {
+  JPY: { symbol: '¥', decimals: 0 },
+  CNY: { symbol: '¥', decimals: 2 },
+  USD: { symbol: '$', decimals: 2 },
+  EUR: { symbol: '€', decimals: 2 },
+  HKD: { symbol: 'HK$', decimals: 2 },
+  TWD: { symbol: 'NT$', decimals: 2 },
+  KRW: { symbol: '₩', decimals: 0 },
+  GBP: { symbol: '£', decimals: 2 },
+};
+function loadCurrency() {
+  return localStorage.getItem('jz_currency') || 'CNY';
+}
+function saveCurrency(code) {
+  localStorage.setItem('jz_currency', code);
+}
+let currentCurrency = loadCurrency();
+function sym() { return CURRENCIES[currentCurrency].symbol; }
+function setCurrency(code) {
+  currentCurrency = code;
+  saveCurrency(code);
+  renderRecords();
+  renderStats();
+}
+
 // ===== 本地存储 =====
 function loadRecords() {
   try { return JSON.parse(localStorage.getItem('jz_records') || '[]'); } catch { return []; }
@@ -683,7 +725,8 @@ function uuid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 function fmt(num) {
-  return Number(num).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const dec = CURRENCIES[currentCurrency].decimals;
+  return Number(num).toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -736,9 +779,10 @@ function renderOverview() {
     if (r.type === 'income') income += r.amount;
     else expense += r.amount;
   });
+  document.getElementById('ov-sym').textContent = sym();
   document.getElementById('ov-balance').textContent = fmt(income - expense);
-  document.getElementById('ov-income').textContent = '¥' + fmt(income);
-  document.getElementById('ov-expense').textContent = '¥' + fmt(expense);
+  document.getElementById('ov-income').textContent = sym() + fmt(income);
+  document.getElementById('ov-expense').textContent = sym() + fmt(expense);
 }
 
 // ===== 记录列表 =====
@@ -769,8 +813,8 @@ function renderRecords() {
     const dayExpense = recs.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
     const dateLabel = formatDate(date);
     let daySummary = '';
-    if (dayExpense > 0) daySummary += `支出 ¥${fmt(dayExpense)}`;
-    if (dayIncome > 0) daySummary += (daySummary ? '  ' : '') + `收入 ¥${fmt(dayIncome)}`;
+    if (dayExpense > 0) daySummary += `支出 ${sym()}${fmt(dayExpense)}`;
+    if (dayIncome > 0) daySummary += (daySummary ? '  ' : '') + `收入 ${sym()}${fmt(dayIncome)}`;
 
     html += `<div class="record-group">
       <div class="record-date-header"><span>${dateLabel}</span><span>${daySummary}</span></div>`;
@@ -782,7 +826,7 @@ function renderRecords() {
           <div class="record-category">${r.category}</div>
           ${r.note ? `<div class="record-note">${escHtml(r.note)}</div>` : ''}
         </div>
-        <div class="record-amount ${r.type}">${r.type === 'expense' ? '-' : '+'}¥${fmt(r.amount)}</div>
+        <div class="record-amount ${r.type}">${r.type === 'expense' ? '-' : '+'}${sym()}${fmt(r.amount)}</div>
         <div class="record-actions">
           <button class="action-btn edit" onclick="editRecord('${r.id}',event)">编辑</button>
           <button class="action-btn delete" onclick="deleteRecord('${r.id}',event)">删除</button>
@@ -970,7 +1014,7 @@ function renderStats() {
           <span class="stats-row-name">${name}</span>
         </div>
         <div class="stats-row-bar-wrap"><div class="stats-row-bar" style="width:${barPct}%"></div></div>
-        <span class="stats-row-amount">¥${fmt(val)}<span style="color:var(--gray-3);font-size:11px;font-weight:400"> ${pct}%</span></span>
+        <span class="stats-row-amount">${sym()}${fmt(val)}<span style="color:var(--gray-3);font-size:11px;font-weight:400"> ${pct}%</span></span>
       </div>`;
     }).join('');
   }
@@ -979,15 +1023,15 @@ function renderStats() {
     <div class="stats-summary">
       <div class="stats-summary-item">
         <label>收入</label>
-        <div class="val income">¥${fmt(income)}</div>
+        <div class="val income">${sym()}${fmt(income)}</div>
       </div>
       <div class="stats-summary-item">
         <label>支出</label>
-        <div class="val expense">¥${fmt(expense)}</div>
+        <div class="val expense">${sym()}${fmt(expense)}</div>
       </div>
       <div class="stats-summary-item">
         <label>结余</label>
-        <div class="val balance" style="color:${balance>=0?'var(--income)':'var(--expense)'}">¥${fmt(balance)}</div>
+        <div class="val balance" style="color:${balance>=0?'var(--income)':'var(--expense)'}">${sym()}${fmt(balance)}</div>
       </div>
     </div>
     <div class="stats-card">
@@ -1114,6 +1158,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ===== 初始化 =====
+document.getElementById('currency-select').value = currentCurrency;
 renderRecords();
 </script>
 </body>

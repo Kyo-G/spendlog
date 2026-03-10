@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jizhang-v1';
+const CACHE_NAME = 'spendlog-v4';
 const FILES_TO_CACHE = [
   './index.html',
   './manifest.json'

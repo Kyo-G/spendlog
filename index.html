@@ -456,6 +456,39 @@
     .confirm-cancel { background: var(--gray-1); color: #000000; }
     .confirm-ok { background: var(--expense); color: var(--white); }
 
+    /* ===== 分类管理 ===== */
+    .cat-type-tab {
+      flex: 1;
+      padding: 7px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1.5px solid var(--gray-2);
+      color: var(--gray-3);
+      background: none;
+      transition: all 0.15s;
+    }
+    .cat-type-tab.active { background: var(--black); color: var(--white); border-color: var(--black); }
+    .cat-manage-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 4px;
+      border-bottom: 1px solid var(--gray-1);
+    }
+    .cat-manage-item:last-child { border-bottom: none; }
+    .cat-manage-icon { font-size: 20px; width: 28px; text-align: center; }
+    .cat-manage-name { flex: 1; font-size: 14px; }
+    .cat-manage-del {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--expense);
+      border: 1px solid var(--expense);
+      background: none;
+    }
+    .cat-manage-del:disabled { opacity: 0.3; }
+
     /* ===== 主题色预设 ===== */
     .color-preset {
       width: 32px;
@@ -556,6 +589,17 @@
             <button class="settings-btn" onclick="document.getElementById('import-file').click()">导入</button>
           </div>
           <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(event)">
+        </div>
+        <div class="settings-group">
+          <div class="settings-group-title">分类管理</div>
+          <div class="settings-item" style="flex-direction:column;align-items:stretch;gap:10px;">
+            <div style="display:flex;gap:6px;">
+              <button class="cat-type-tab active" id="cat-tab-expense" onclick="switchCatTab('expense')">支出分类</button>
+              <button class="cat-type-tab" id="cat-tab-income" onclick="switchCatTab('income')">收入分类</button>
+            </div>
+            <div id="cat-manage-list"></div>
+            <button onclick="openAddCat()" style="width:100%;padding:10px;border:1.5px dashed var(--gray-2);border-radius:var(--radius-sm);font-size:14px;color:var(--gray-3);background:none;">+ 添加分类</button>
+          </div>
         </div>
         <div class="settings-group">
           <div class="settings-group-title">危险操作</div>
@@ -671,6 +715,25 @@
   </div>
 </div>
 
+<!-- 添加分类弹窗 -->
+<div class="overlay" id="addcat-overlay" onclick="handleAddCatOverlay(event)">
+  <div class="sheet">
+    <div class="sheet-header">
+      <span class="sheet-title">添加分类</span>
+      <button class="sheet-close" onclick="closeAddCat()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">图标（输入一个 Emoji）</label>
+      <input class="form-input" id="addcat-icon" type="text" placeholder="🍕" maxlength="2">
+    </div>
+    <div class="form-group">
+      <label class="form-label">分类名称</label>
+      <input class="form-input" id="addcat-name" type="text" placeholder="例如：零食">
+    </div>
+    <button class="submit-btn" onclick="saveNewCat()">添加</button>
+  </div>
+</div>
+
 <!-- 确认弹窗 -->
 <div class="confirm-overlay" id="confirm-overlay">
   <div class="confirm-box">
@@ -688,7 +751,7 @@
 
 <script>
 // ===== 数据结构 =====
-const CATEGORIES = {
+const DEFAULT_CATEGORIES = {
   expense: [
     { name: '餐饮', icon: '🍜' },
     { name: '交通', icon: '🚇' },
@@ -708,6 +771,13 @@ const CATEGORIES = {
     { name: '其他', icon: '💰' },
   ]
 };
+function loadCategories() {
+  try { return JSON.parse(localStorage.getItem('jz_categories')) || DEFAULT_CATEGORIES; } catch { return DEFAULT_CATEGORIES; }
+}
+function saveCategories() {
+  localStorage.setItem('jz_categories', JSON.stringify(CATEGORIES));
+}
+const CATEGORIES = loadCategories();
 
 // ===== 主题色 =====
 function loadThemeColor() {
@@ -1111,6 +1181,63 @@ function renderStats() {
   `;
 }
 
+// ===== 分类管理 =====
+let catTabType = 'expense';
+
+function switchCatTab(type) {
+  catTabType = type;
+  document.getElementById('cat-tab-expense').classList.toggle('active', type === 'expense');
+  document.getElementById('cat-tab-income').classList.toggle('active', type === 'income');
+  renderCatManageList();
+}
+
+function renderCatManageList() {
+  const list = CATEGORIES[catTabType];
+  const el = document.getElementById('cat-manage-list');
+  if (!el) return;
+  el.innerHTML = list.map((c, i) => `
+    <div class="cat-manage-item">
+      <span class="cat-manage-icon">${c.icon}</span>
+      <span class="cat-manage-name">${c.name}</span>
+      <button class="cat-manage-del" onclick="deleteCat(${i})" ${list.length <= 1 ? 'disabled' : ''}>删除</button>
+    </div>
+  `).join('');
+}
+
+function deleteCat(index) {
+  const cat = CATEGORIES[catTabType][index];
+  showConfirm('删除分类', `确定删除「${cat.name}」分类吗？`, () => {
+    CATEGORIES[catTabType].splice(index, 1);
+    saveCategories();
+    renderCatManageList();
+    showToast('已删除');
+  });
+}
+
+function openAddCat() {
+  document.getElementById('addcat-icon').value = '';
+  document.getElementById('addcat-name').value = '';
+  document.getElementById('addcat-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('addcat-icon').focus(), 300);
+}
+function closeAddCat() {
+  document.getElementById('addcat-overlay').classList.remove('open');
+}
+function handleAddCatOverlay(e) {
+  if (e.target === document.getElementById('addcat-overlay')) closeAddCat();
+}
+function saveNewCat() {
+  const icon = document.getElementById('addcat-icon').value.trim() || '📌';
+  const name = document.getElementById('addcat-name').value.trim();
+  if (!name) { showToast('请输入分类名称'); return; }
+  if (CATEGORIES[catTabType].find(c => c.name === name)) { showToast('分类已存在'); return; }
+  CATEGORIES[catTabType].push({ name, icon });
+  saveCategories();
+  renderCatManageList();
+  closeAddCat();
+  showToast('已添加');
+}
+
 // ===== 数据导入导出 =====
 function exportJSON() {
   const data = { records, exportedAt: new Date().toISOString(), version: 1 };
@@ -1230,6 +1357,7 @@ if ('serviceWorker' in navigator) {
 // ===== 初始化 =====
 applyThemeColor(loadThemeColor());
 document.getElementById('currency-select').value = currentCurrency;
+renderCatManageList();
 renderRecords();
 </script>
 </body>
